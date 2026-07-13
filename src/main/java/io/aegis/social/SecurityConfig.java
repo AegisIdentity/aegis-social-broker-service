@@ -19,6 +19,9 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Per-tenant identity-provider registry (console self-service).
+                        .requestMatchers("/api/v1/identity-providers", "/api/v1/identity-providers/**")
+                        .hasAuthority("SCOPE_idp:admin")
                         .requestMatchers("/api/**").hasAuthority("SCOPE_social:admin")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
