@@ -1,10 +1,24 @@
 # aegis-social-broker-service — working notes
 
-Inbound federation: social login + corporate SAML/OIDC brokering.  **Maturity: scaffold** (skeleton, not feature-complete).
+Inbound federation: per-tenant social/OIDC/SAML identity-provider registry + brokering.
+**Maturity: functional (config).** Port 9105. Postgres (`aegis_social`), JPA.
 
 ## What this is
-A Spring Boot 4.1 / Java 21 OAuth2 **resource server** skeleton in the Aegis polyrepo. Package root:
-`io.aegis.social`. Security lives in `SecurityConfig` (uses `io.aegis.commons.security.SecurityHardening`).
+A Spring Boot 4.1 / Java 21 OAuth2 resource server. Package root `io.aegis.social`.
+- `domain/IdentityProvider` — per-tenant provider config (unique alias per tenant). `clientSecret` is
+  stored but **write-only** (never returned by the API).
+- `service/ProviderCatalog` + `ProviderPreset` — presets for GOOGLE/ENTRA/APPLE/GITHUB/OIDC/SAML
+  (endpoints, scopes, protocol, required extra fields). Entra issuer is templated from `providerDirectory`.
+- `service/IdentityProviderService` — tenant-scoped CRUD (tenant from the token, never the body).
+- `web/IdentityProviderController` — `/api/v1/identity-providers` (+ `/catalog`), gated `SCOPE_idp:admin`.
+- `config/ResourceServerJwtConfig` — split-horizon JWT decoder (in-network JWKS + issuer allowlist);
+  do NOT revert to a single `issuer-uri`. See [[aegis-issuer-split-horizon]].
+
+Security lives in `SecurityConfig` (uses `io.aegis.commons.security.SecurityHardening`).
+
+## Next (not built yet)
+The live federation **runtime** (redirect to provider → callback → JIT-provision → Aegis token) is
+Phase 2, executed by the authorization-server against these configs. SAML runtime is Phase 3.
 
 ## Non-negotiables (do not regress)
 - Default-deny: every new endpoint stays denied until an explicit `authorizeHttpRequests` rule + a
