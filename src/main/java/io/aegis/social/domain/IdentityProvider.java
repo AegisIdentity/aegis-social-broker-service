@@ -1,6 +1,8 @@
 package io.aegis.social.domain;
 
+import io.aegis.social.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -13,7 +15,8 @@ import java.util.UUID;
 /**
  * A per-tenant registered identity provider (social/OIDC/SAML). Always scoped to a {@code tenantId};
  * the {@code alias} is unique per tenant and is what appears in the "Sign in with …" button and the
- * federation callback path. The {@code clientSecret} is stored but never returned by the API.
+ * federation callback path. The {@code clientSecret} is stored (AES-256-GCM encrypted at rest, M-svc-2)
+ * but never returned by the public API.
  *
  * <p>Fields are a superset covering all protocols; which are populated depends on {@link #protocol} and
  * the provider preset ({@link #providerKey}). Nulls are expected (e.g. SAML rows have no OAuth endpoints).
@@ -53,6 +56,7 @@ public class IdentityProvider {
     @Column(name = "client_id", length = 320)
     private String clientId;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "client_secret", length = 2048)
     private String clientSecret;
 
