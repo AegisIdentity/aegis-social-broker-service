@@ -25,9 +25,12 @@ import org.springframework.util.StringUtils;
 public class IdentityProviderService {
 
     private final IdentityProviderRepository providers;
+    private final io.aegis.commons.audit.AuditRecorder audit;
 
-    public IdentityProviderService(IdentityProviderRepository providers) {
+    public IdentityProviderService(IdentityProviderRepository providers,
+                                   io.aegis.commons.audit.AuditRecorder audit) {
         this.providers = providers;
+        this.audit = audit;
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +65,10 @@ public class IdentityProviderService {
         p.setScopes(StringUtils.hasText(req.scopes()) ? req.scopes() : preset.defaultScopes());
         p.setUserNameAttribute(StringUtils.hasText(req.userNameAttribute())
                 ? req.userNameAttribute() : preset.userNameAttribute());
-        return toView(providers.save(p));
+        IdentityProvider saved = providers.save(p);
+        audit.record("idp", "idp.created", tenantId, "system", saved.getAlias(),
+                "provider", saved.getProviderKey());
+        return toView(saved);
     }
 
     @Transactional
@@ -81,12 +87,16 @@ public class IdentityProviderService {
             p.setClientSecret(req.clientSecret());
         }
         p.touch();
-        return toView(providers.save(p));
+        IdentityProvider saved = providers.save(p);
+        audit.record("idp", "idp.updated", tenantId, "system", saved.getAlias());
+        return toView(saved);
     }
 
     @Transactional
     public void delete(String tenantId, UUID id) {
-        providers.delete(load(tenantId, id));
+        IdentityProvider p = load(tenantId, id);
+        providers.delete(p);
+        audit.record("idp", "idp.deleted", tenantId, "system", p.getAlias());
     }
 
     // --- internals ---
